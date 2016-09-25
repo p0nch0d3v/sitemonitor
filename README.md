@@ -53,5 +53,9 @@ And the **smtp** configuration:
 ```
 This section should be configured and verified to send the notifications
 
+## How to Run
+
+Just execute the file **site_monitor.py**
+
 ##LICENSE
 GPL v3
