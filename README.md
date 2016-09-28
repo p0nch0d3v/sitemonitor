@@ -57,5 +57,17 @@ This section should be configured and verified to send the notifications
 
 Just execute the file **site_monitor.py**
 
+### Linux
+```bash
+./site_monitor.py
+```
+```bash
+python3 site_monitor.py
+```
+Or create a cron job
+```bash
+*/1 * * * * python3 site_monitor.py
+```
+
 ##LICENSE
 GPL v3
