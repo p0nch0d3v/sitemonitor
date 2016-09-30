@@ -23,5 +23,8 @@ config = {
 		'port': 0,
 		'login': {'user': '', 'password': ''},
 		'from_address': ''
+	},
+	'global': {
+		'notify': []
 	}
 }

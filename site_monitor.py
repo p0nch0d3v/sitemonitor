@@ -30,7 +30,8 @@ def is_host_online(host, timeout= 10):
         fqdn = socket.getfqdn(host)
         return {'result': True, 'ip': str(ip), 'FQDN': str(fqdn)}
     except:
-        return {'result': False, 'msg': sys.exc_info()[1]}
+        write_log(log['global_filename'], (sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]))
+        return {'result': False, 'ip': None, 'FQDN': None, 'msg': sys.exc_info()[1]}
 
 def is_page_available(page):
     try:
@@ -38,18 +39,23 @@ def is_page_available(page):
         html = response.read()
         return {'result': True, 'code': str(response.code), 'msg': str(response.msg)}
     except urllib.error.HTTPError as e:
+        write_log(log['global_filename'], (e, (sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2])))
         return {'result' : False, 'code' : str(e.code), 'msg' : e.read()}
     except urllib.error.URLError as e:
-        return {'result': False, 'code': 500, 'msg': e.reason}
+        write_log(log['global_filename'], (e, (sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2])))
+        return {'result': False, 'code': '500', 'msg': e.reason}
     except:
-        return {'result': False, 'code': 500, 'msg': sys.exc_info()[1]}
+        write_log(log['global_filename'], (sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]))
+        return {'result': False, 'code': '500', 'msg': sys.exc_info()[1]}
 
 def get_page_status(name, host, page, notify_address, timeout=10):
     if name is None or len(name) == 0:
         raise Error("No name defined")
     if host is None or len(host) == 0:
         raise Error("No host defined")
-    if notify_address is None or len(notify_address) == 0:
+    global_notify_address = site_monitor_config.config['global']['notify']
+    all_notify_address = notify_address + list(set(global_notify_address) - set(notify_address))
+    if all_notify_address is None or len(all_notify_address) == 0:
         raise Error("No notification address defined")
 
     host_status = is_host_online(host, timeout)
@@ -64,7 +70,7 @@ def get_page_status(name, host, page, notify_address, timeout=10):
         previous_status_str = str(json.dumps(need_notify['previous_status'], sort_keys=True, indent=4))
         current_status_str = str(json.dumps(need_notify['current_status'], sort_keys=True, indent=4))
         body = 'Previous: ' + previous_status_str + '\r\n\r\n' + 'Current: ' + current_status_str
-        send_notification_email(to_address=notify_address, subject='[{name}] - Site status changed #{eventNumber}'.format(name=name, eventNumber=need_notify['current_status']['EventNumber']), body=body)
+        send_notification_email(to_address=all_notify_address, subject='[{name}] - Site status changed #{eventNumber}'.format(name=name, eventNumber=need_notify['current_status']['EventNumber']), body=body)
 
 def normalize_page_msg(status):
     if type(status) != type(None) and type(status['page']) != type(None) and type(status['page']['msg']) != type(None):

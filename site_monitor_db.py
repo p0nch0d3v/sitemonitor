@@ -20,8 +20,7 @@ def db_check_status(site_name, new_status):
         host_ip = get_dict_value(current_status['host'], 'ip') != get_dict_value(new_status['host'], 'ip')
         host_fqdn = get_dict_value(current_status['host'], 'FQDN') != get_dict_value(new_status['host'], 'FQDN')
         page_code = get_dict_value(current_status['page'], 'code') != get_dict_value(new_status['page'], 'code')
-
-        if host_result or page_result or host_ip or host_fqdn or page_code:
+        if host_result == True or page_result == True or host_ip == True or host_fqdn == True or page_code == True:
              need_notify = True
              new_status['EventNumber'] = current_status['EventNumber'] + 1
              previous_status = current_status
@@ -37,7 +36,7 @@ def db_get_status(site_name):
     current_status = c.fetchone()
     conn.close()
     if current_status != None:
-        current_status = {'host': {'result': bool(current_status[0]), 'ip': str(current_status[1]), 'FQDN': str(current_status[2])}, 'page': {'result': bool(current_status[3]), 'code': str(current_status[4]), 'msg': str(current_status[5])}, 'LastUpdate': datetime.strptime(current_status[6], datetime_format).strftime(datetime_format), 'EventNumber': int(current_status[7])}
+        current_status = {'host': {'result': bool(current_status[0]), 'ip': current_status[1], 'FQDN': current_status[2]}, 'page': {'result': bool(current_status[3]), 'code': current_status[4], 'msg': str(current_status[5])}, 'LastUpdate': datetime.strptime(current_status[6], datetime_format).strftime(datetime_format), 'EventNumber': int(current_status[7])}
     return current_status
 
 def db_set_status(site_name, new_status):
@@ -45,11 +44,11 @@ def db_set_status(site_name, new_status):
     c = conn.cursor()
     values = (site_name,
         new_status['host']['result'],
-        str(get_dict_value(new_status['host'], 'ip')).strip(),
-        str(get_dict_value(new_status['host'], 'FQDN')).strip(),
+        get_dict_value(new_status['host'], 'ip'),
+        get_dict_value(new_status['host'], 'FQDN'),
         new_status['page']['result'],
-        str(get_dict_value(new_status['page'], 'code')).strip(),
-        str(get_dict_value(new_status['page'], 'msg')).strip(),
+        get_dict_value(new_status['page'], 'code'),
+        str(get_dict_value(new_status['page'], 'msg')),
         datetime.now().strftime(datetime_format), )
     c.execute('INSERT INTO %s (Name, HostResult, HostIp, HostFQDN, PageResult, PageCode, PageMsg, LastUpdate, EventNumber) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)' % db_table_name, values)
     conn.commit()
@@ -59,11 +58,11 @@ def db_update_status(site_name, new_status):
     conn = sqlite3.connect(db_file_name)
     c = conn.cursor()
     values = (new_status['host']['result'],
-        str(get_dict_value(new_status['host'], 'ip')).strip(),
-        str(get_dict_value(new_status['host'], 'FQDN')).strip(),
+        get_dict_value(new_status['host'], 'ip'),
+        get_dict_value(new_status['host'], 'FQDN'),
         new_status['page']['result'],
-        str(get_dict_value(new_status['page'], 'code')).strip(),
-        str(get_dict_value(new_status['page'], 'msg')).strip(),
+        get_dict_value(new_status['page'], 'code'),
+        str(get_dict_value(new_status['page'], 'msg')),
         datetime.now().strftime(datetime_format), 
         new_status['EventNumber'],
         site_name, )
