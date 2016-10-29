@@ -10,6 +10,7 @@ import urllib.error
 import threading
 import json
 import os
+import getopt
 from datetime import datetime
 from datetime import date
 from smtplib import SMTP
@@ -28,9 +29,10 @@ def is_host_online(host, timeout= 10):
         socket.setdefaulttimeout(timeout)
         ip = socket.gethostbyname(host)
         fqdn = socket.getfqdn(host)
-        return {'result': True, 'ip': str(ip), 'FQDN': str(fqdn)}
+        return {'result': True, 'ip': str(ip), 'FQDN': str(fqdn), 'msg': None}
     except:
-        write_log(log['global_filename'], (sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]))
+        exception = str((sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]))
+        write_log(log['global_filename'], exception)
         return {'result': False, 'ip': None, 'FQDN': None, 'msg': sys.exc_info()[1]}
 
 def is_page_available(page):
@@ -90,16 +92,16 @@ def write_log(filename, message):
 
 def send_notification_email(to_address, subject, body):
     from_address = site_monitor_config.config['smtp']['from_address']
-    
+
     server_address = site_monitor_config.config['smtp']['server']
     port = site_monitor_config.config['smtp']['port']
     server = SMTP('{server}:{port}'.format(server=server_address, port=port))
     server.starttls()
-    
+
     user = site_monitor_config.config['smtp']['login']['user']
     password = site_monitor_config.config['smtp']['login']['password']
     server.login(user, password)
-    
+
     body = '\r\n'.join(['To: %s' % to_address, 'From: %s' % from_address, 'Subject: %s' % subject, '', body])
 
     server.sendmail(from_address, to_address, body)
@@ -112,20 +114,36 @@ def check_internet(host, page):
     page_status = is_page_available(page)
     return (host_status['result'] and page_status['result'])
 
-def init():
+def parse_arguments(argv):
+    options = {'dbupdate': False}
+    opts, args = getopt.getopt(argv,"d", ['db-update'])
+    for opt, arg in opts:
+        if opt in ("-d", "--db-update"):
+            options['dbupdate'] = True
+    return options
+
+def main(argv):
     try:
-        db_init()
-        internet_site = [s for s in site_monitor_config.config['sites'] if get_dict_value(s, 'reference', False) == True]
-        if(internet_site is not None and len(internet_site) > 0):
-            internet_site = internet_site[0]
-            if check_internet(internet_site['host'], internet_site['url']):
-                sites = [s for s in site_monitor_config.config['sites'] if (get_dict_value(s, 'reference', False) == False and get_dict_value(s, 'enabled', False) == True)]
-                for site in sites:
-                    if get_dict_value(site, 'reference', False) == False:
-                        t = threading.Thread(target=get_page_status, args=(site['name'], site['host'], site['url'], site['notify'], site['timeout']))
-                        t.start()
+        options = parse_arguments(argv)
+        print(options)
+        if get_dict_value(options, 'dbupdate', False) is True:
+            db_init()
+        else:
+            internet_site = [s for s in site_monitor_config.config['sites'] if get_dict_value(s, 'reference', False) == True]
+            if(internet_site is not None and len(internet_site) > 0):
+                internet_site = internet_site[0]
+                if check_internet(internet_site['host'], internet_site['url']):
+                    sites = [s for s in site_monitor_config.config['sites'] if (get_dict_value(s, 'reference', False) == False and get_dict_value(s, 'enabled', False) == True)]
+                    for site in sites:
+                        if get_dict_value(site, 'reference', False) == False:
+                            t = threading.Thread(target=get_page_status, args=(site['name'], site['host'], site['url'], site['notify'], site['timeout']))
+                            t.start()
+    except getopt.GetoptError as err:
+        print(err)
+        sys.exit(2)
     except:
         str(sys.exc_info()[0]) + ' | ' + str(sys.exc_info()[1]) + ' | ' + str(sys.exc_info()[2])
         write_log(log['global_filename'], text)
 
-init()
+if __name__ == "__main__":
+    main(sys.argv[1:])
